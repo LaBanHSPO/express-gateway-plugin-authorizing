@@ -1,47 +1,46 @@
-const http = require('http');
+// const requestify = require('requestify');
+// requestify.cacheTransporter(coreCacheTransporters.inMemory());
+
+const axios = require('axios');
 
 module.exports = {
   name: 'authorizing',
   policy: (actionParams) => {
     return (req, res, next) => {
-      const endpoint = config.gatewayConfig.serviceEndpoints[actionParams.serviceEndpoint];
+      const baseURL = actionParams.baseUrl;
+      axios.create({
+        timeout: 5000,
+      });
+
       const userInfo = actionParams.userInfo;
-      console.log('Requesting to: ', `${endpoint}/${userInfo}`);
-      const userInfoReqOptions = {
-        hostname: endpoint,
-        port: 80,
-        path: userInfo,
+      axios({
+        url: `${baseURL}/${userInfo}`,
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': req.headers || req.headers.authorization
+          Authorization: req.headers.authorization
         }
-      };
-      const requestUserInfo = http.request(userInfoReqOptions, function(userInfoResponse) {
-        console.log('Status: ' + userInfoResponse.statusCode);
-        console.log('Headers: ' + JSON.stringify(userInfoResponse.headers));
-        userInfoResponse.setEncoding('utf8');
-        userInfoResponse.on('data', function (body) {
-          console.log('Body: ' + body);
-          req.user = body;
-          next();
-        });
-      });
-      requestUserInfo.on('error', function(e) {
-        console.log('problem with request: ' + e.message);
-        res.end('PROBLEM_WITH_USER_INFO_REQUEST');
-      });
+      })
+      .then(response => {
+        req.user = response.data;
+        next();
+      })
+      .catch(error => {
+        console.log('error =>', error);
+      })
+    //   requestify.post(`${baseUrl}/${userInfo}`, {},
+    //   //   { cache: {
+    // 	//   cache: true, // Will set caching to true for this request.
+    // 	//   expires: 3600 // Time for cache to expire in milliseconds
+    //   // }}
+    //   )
+    // .then((response) => {
+    //    const body = response.getBody();
+    //    console.log('body =>', body);
+    //    next();
+    // })
+    // .catch(error => {
+    //   console.log('erorr =>', erorr);
+    // });
     }
   },
-  // schema: { // This is for Admin API to validate params
-  //   type: 'object',
-  //   properties: {
-  //     url: {
-  //       title: 'url',
-  //       description: 'the url to initialize',
-  //       type: 'string',
-  //       required: false
-  //     }
-  //   }
-  // }
 }
